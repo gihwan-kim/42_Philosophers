@@ -6,20 +6,18 @@
 /*   By: gihwan-kim <kgh06079@gmail.com>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/02/23 13:23:23 by gihwan-kim        #+#    #+#             */
-/*   Updated: 2021/02/28 12:47:23 by gihwan-kim       ###   ########.fr       */
+/*   Updated: 2021/02/28 12:15:43 by gihwan-kim       ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "philo_one.h"
+#include "philo_three.h"
 
-extern pthread_mutex_t	*g_m_forks;
 extern t_option		    *g_option;
 extern t_philo		    *g_philo_array;
 
 int		init_option(int argc, char **argv)
 {
-	g_option = (t_option*)malloc(sizeof(t_option));
-	if (!g_option)
+	if (!(g_option = (t_option*)malloc(sizeof(t_option))))
 		return (0);
 	g_option->num_of_philo = ft_atoi(argv[1]);
 	g_option->time_to_die = ft_atoi(argv[2]);
@@ -32,42 +30,58 @@ int		init_option(int argc, char **argv)
 		g_option->num_of_philo_must_eat = ft_atoi(argv[5]);
 	else
 		g_option->num_of_philo_must_eat = -1;
-	g_m_forks = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t) * g_option->num_of_philo);
-	if (!g_m_forks)
-	{
-		free(g_option);
-		return (0);
-	}
+	g_option->sem_forks = NULL;
+	g_option->sem_printf = NULL;
+	g_option->sem_died = NULL;
+	g_option->sem_state = NULL;
 	return (1);
 }
 
-int		init_mutex_clear()
+int		init_sema_clear(int type)
 {
-	int	i;
-
-	i = -1;
-	while (++i < g_option->num_of_philo)
-		pthread_mutex_destroy(&g_m_forks[i]);
-	pthread_mutex_destroy(&(g_option->mutex_printf));
-	pthread_mutex_destroy(&(g_option->mutex_state));
+	free(g_option);
+	if (type == 0)
+		return (0);
+	else if (type == 1)
+		sem_unlink("/sem_forks");
+	else if (type == 2)
+	{
+		sem_unlink("/sem_forks");
+		sem_unlink("/sem_printf");
+	}
+	else if (type == 3)
+	{
+		sem_unlink("/sem_forks");
+		sem_unlink("/sem_printf");
+		sem_unlink("/sem_died");
+	}
 	return (0);
 }
 
-int		init_mutex()
+int		init_sema()
 {
-	int	i;
-	int	ret;
-
-	i = -1;
-	ret = 0;
-	while (++i < g_option->num_of_philo && !ret)
-		ret = pthread_mutex_init(&g_m_forks[i], NULL);
-	if (ret)
-		return (init_mutex_clear());
-	if (pthread_mutex_init(&g_option->mutex_printf, NULL))
-		return (init_mutex_clear());
-	if (pthread_mutex_init(&g_option->mutex_state, NULL))
-		return (init_mutex_clear());
+	sem_unlink("/sem_forks");
+	sem_unlink("/sem_printf");
+	sem_unlink("/sem_died");
+	sem_unlink("/sem_state");
+	g_option->sem_forks = sem_open("/sem_forks", O_CREAT, 
+								S_IWUSR | S_IWGRP | S_IWOTH,
+								g_option->num_of_philo);
+	if (g_option->sem_forks < 0)
+		return (init_sema_clear(0));
+	g_option->sem_printf = sem_open("/sem_printf", O_CREAT, 
+								S_IWUSR | S_IWGRP | S_IWOTH, 1);
+	if (g_option->sem_printf < 0)
+		return (init_sema_clear(1));;
+	g_option->sem_died = sem_open("/sem_died", O_CREAT, 
+								S_IWUSR | S_IWGRP | S_IWOTH, 1);
+	if (g_option->sem_died < 0)
+		return (init_sema_clear(2));
+	g_option->sem_state = sem_open("/sem_state", O_CREAT, 
+								S_IWUSR | S_IWGRP | S_IWOTH, g_option->num_of_philo);
+	if (g_option->sem_state < 0)
+		return (init_sema_clear(3));
+	sem_wait(g_option->sem_died);
 	return (1);
 }
 
@@ -82,11 +96,7 @@ int		init_philo_array()
 	{
 		g_philo_array[i].eat_count = 0;
 		g_philo_array[i].no = i + 1;
-		g_philo_array[i].fork_left = &g_m_forks[i];
-		if (i - 1 < 0)
-			g_philo_array[i].fork_right = &g_m_forks[g_option->num_of_philo - 1];
-		else
-			g_philo_array[i].fork_right = &g_m_forks[i - 1];
+		g_philo_array[i].sem_my_forks = g_option->sem_forks;
 		g_philo_array[i].s_start_time = (struct timeval *)malloc(sizeof(struct timeval));
 		if (!g_philo_array[i].s_start_time)
 			return (0);

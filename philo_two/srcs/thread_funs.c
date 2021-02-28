@@ -6,19 +6,26 @@
 /*   By: gihwan-kim <kgh06079@gmail.com>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/02/23 13:28:33 by gihwan-kim        #+#    #+#             */
-/*   Updated: 2021/02/28 13:25:04 by gihwan-kim       ###   ########.fr       */
+/*   Updated: 2021/02/28 13:16:33 by gihwan-kim       ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "philo_one.h"
+#include "philo_two.h"
 
-extern pthread_mutex_t	*g_m_forks;
 extern t_option		    *g_option;
 extern t_philo		    *g_philo_array;
 
 /*
-** check num_of_philo_must_eat
+** 바꾼것
+** 	'전체 횟수 변수 == 각 철학자별 최소 횟수 * 철학자 수' 를 비교하는 방법대신
+** 	각 철학자 별로 횟수를 계산하도록 바꿨다.
+** 	전체 수를 비교하다 보니 각 철학자 최소 횟수가 맞지 않는 경우가 생김
 */
+
+/*
+** check num_of_times_philo_must_eat
+*/
+
 void	*philo_all_state(void *_data)
 {
 	int	i;
@@ -37,9 +44,9 @@ void	*philo_all_state(void *_data)
 				count++;
 				if (count == g_option->num_of_philo)
 				{
-					pthread_mutex_lock(&g_option->mutex_state);
+					sem_wait(g_option->sem_state);
 					g_option->is_eat_over = 1;
-					pthread_mutex_unlock(&g_option->mutex_state);
+					sem_post(g_option->sem_state);
 					return (0);
 				}
 			}
@@ -58,21 +65,21 @@ void	*philo_state(void *_data)
 		if (data->s_last_eat_time && !check_died(data))
 		{
 			print_message(data, "died");
-			pthread_mutex_lock(&g_option->mutex_state);
+			sem_wait(g_option->sem_state);
 			g_option->is_died = 1;
-			pthread_mutex_unlock(&g_option->mutex_state);
+			sem_post(g_option->sem_state);
 			return (0);
 		}
-		usleep(1000);
+		usleep(100);
 	}
 	return (0);
 }
 
 void	eat(t_philo *data)
 {
-	pthread_mutex_lock(data->fork_right);
-	pthread_mutex_lock(data->fork_left);
+	sem_wait(data->sem_my_forks);
 	print_message(data, "has taken a fork");
+	sem_wait(data->sem_my_forks);
 	print_message(data, "has taken a fork");
 	if (data->s_last_eat_time == NULL)
 		data->s_last_eat_time = (struct timeval *)malloc(sizeof(struct timeval));
@@ -80,8 +87,8 @@ void	eat(t_philo *data)
 	print_message(data, "is eating");
 	data->eat_count++;
 	usleep(g_option->time_to_eat);
-	pthread_mutex_unlock(data->fork_left);
-	pthread_mutex_unlock(data->fork_right);
+	sem_post(data->sem_my_forks);
+	sem_post(data->sem_my_forks);
 }
 
 void	*philo_action(void *_data)
@@ -106,23 +113,16 @@ int		create_thread()
 {
 	pthread_t	philo_all_check;
 	int	i;
-	int	ret;
-
 	i = -1;
-	ret = 0;
-	while (++i < g_option->num_of_philo && !ret)
+	while (++i < g_option->num_of_philo)
 	{
-		ret = pthread_create(&(g_philo_array[i].thread_idx), NULL, philo_action, &g_philo_array[i]);
-		usleep(20);
+		pthread_create(&(g_philo_array[i].thread_idx), NULL, philo_action, &g_philo_array[i]);
+		usleep(40);
 	}
-	if (ret)
-		return (0);
-	ret = pthread_create(&philo_all_check, NULL, philo_all_state, NULL);
+	pthread_create(&philo_all_check, NULL, philo_all_state, NULL);
 	pthread_detach(philo_all_check);
 	i = 0;
-	while (i < g_option->num_of_philo && !ret)
-		ret = pthread_join(g_philo_array[i++].thread_idx, NULL);
-	if (ret)
-		return (0);
+	while (i < g_option->num_of_philo)
+		pthread_join(g_philo_array[i++].thread_idx, NULL);
 	return (1);
 }

@@ -30,6 +30,8 @@ eating, thinking, sleeping  3 개중 하나를 함
 
 모든 사람이 먹어야함
 
+• Philosophers don’t speak with each other.
+
 다른 사람이 죽을떄 죽었는지 알지못함
 
 다 먹고나면 포크를 내려놓음, 잠을 잔다.
@@ -120,6 +122,91 @@ mutex for each of them.
 
 ### number_of_times_each_philosopher_must_eat 가 '0' 일 경우는 ?
 
+
+# philo_two
+```
+Program name            philo_two
+Turn in files           philo_two/
+Makefile                Yes
+Arguments               number_of_philosophers time_to_die time_to_eat
+                        time_to_sleep [number_of_times_each_philosopher_must_eat]
+External functs.        memset, printf, malloc, free, write, usleep,
+                        gettimeofday, pthread_create, pthread_detach,
+                        pthread_join, sem_open, sem_close, sem_post,
+                        sem_wait, sem_unlink
+Libft authorized        No
+Description             philosopher with threads and semaphore
+In this version the non common rules will be:
+• All the forks are in the middle of the table.
+• They have no states in memory but the number of available forks is represented by
+a semaphore.
+• Each philosopher should be a thread.
+```
+- 모든 포크가 테이블 중간에 있음
+- 메모리에 상태가 남아있지 않는다.(아마 포크를 말하는 듯) 사용가능한 포크는 semaphore 로 표현한다.
+- 각 철학자는 스레드
+
+### 바꾼것
+```
+'전체 횟수 변수 == 각 철학자별 최소 횟수 * 철학자 수' 를 비교하는 방법대신
+각 철학자 별로 횟수를 계산하도록 바꿨다.
+전체 수를 비교하다 보니 각 철학자 최소 횟수가 맞지 않는 경우가 생김
+```
+
+#### 문제
+- 철학자 한명이 먼저 죽었을때 이후 출력이 계속 진행되다 다죽게됨
+    => 해결:  철학자 가 죽었는지 확인하는 스레드를 각 자식프로세스별로 활동 시행 함수를 호출하기전에 실행시켜줬음
+
+
+
+# philo_three
+```
+Program name            philo_three
+Turn in files           philo_three/
+Makefile                Yes
+Arguments               number_of_philosophers time_to_die time_to_eat
+                        time_to_sleep [number_of_times_each_philosopher_must_eat]
+External functs.        memset, printf, malloc, free, write, fork, kill,
+                        exit, pthread_create, pthread_detach, pthread_join,
+                        usleep, gettimeofday, waitpid, sem_open, sem_close,
+                        sem_post, sem_wait, sem_unlink
+Libft authorized        No
+Description             philosopher with processes and semaphore
+
+In this version the non common rules will be:
+    • All the forks are in the middle of the table.
+    • They have no states in memory but the number of available forks is represented by a semaphore.
+    • Each philosopher should be a process and the main process should not be a philosopher.
+```
+- 포크들이 테이블 중간에 있는 상태
+- 세마포어로 포크를 표현
+- 각 철학자는 프로세스 여야한다. 메인 프로세스는 철학자이면 안됨
+
+
+#### 궁금한것들
+- 프로세스의 경우 메모리를 복사하는데 공유 메모리를 사용할 수 있나?
+    => 세마포어를 통해 공유 메모리에 접근하자.
+- 각 프로세스(철학자) 별로 최소 횟수를 달성했는지 어떻게 확인하지?
+    => 최소횟수 값이 있다면 각 프로세스 별로 최소 횟수를 달성했을떄 프로세스를 종료시켜준다.
+    => 종료 상태 값을 통해 횟수를 달성했는지 죽었는지 확인하는 식으로
+
+- 부모 프로세스에서 자식 프로세스를 건드릴 수 있나?
+- 부모, 자식간의 데이터 전달
+
+fork 를 사용해서 자식 프로세스를 생성하면
+부모프로세스에서 생성한 세마포어를 복사받고
+부모 프로세스의 데이터 같은 것은 복사되서 자식프로세스에서 
+세마포어로 지정한 크리티컬 영역안에서 그 변수를 수정해도 부모 프로세스에서는 영향을 받지 않음?
+세마포어 자체는 보존이 되기 떄문에 이거를 통해서 확인을 하면 되지 않을까?
+
+철학자 한명이 죽으면
+    세마포어를 닫아준다
+
+메인 프로세스에서 세마포어가 열리길 기다리고 있다가 열리면 나머지 철학자들을 죽여준다.
+
+
+
+
 Error Handling
 This project is to be coded in C, following the Norm.
 Any crash, undefined behavior, memory leak or norm error means 0 to the project.
@@ -144,32 +231,41 @@ Philo_one test
 
 
 Philo_two code
-- Check the code of philo_two for the following things and ask for explanation.
-- Check if there is one thread per philosopher.
-- Check if there is a single semaphore that represents the number of forks.
-- Check if the output is protected against multiple access. To avoid a scrambled view.
-- Check how the death of a philosopher is checked and if there is a semaphore to protect that a philosopher dies and start eating at the same time.
+    - Check the code of philo_two for the following things and ask for explanation.
+    - Check if there is one thread per philosopher.
+    - Check if there is a single semaphore that represents the number of forks.
+    - Check if the output is protected against multiple access. To avoid a scrambled view.
+    - Check how the death of a philosopher is checked and if there is a semaphore to protect that a philosopher dies and start eating at the same time.
+
 Philo_two test
-- Do not test with more than 200 philosphers
-- Do not test with time_to_die or time_to_eat or time_to_sleep under 60 ms
-- Test with 5 800 200 200, no one should die!
-- Test with 5 800 200 200 7, no one should die and the simulation should stop when all the philosopher has eaten at least 7 times each.
-- Test with 4 410 200 200, no one should die!
-- Test with 4 310 200 100, a philosopher should die!
-- Test with 2 philosophers and check the different times (a death delayed by more than 10 ms is unacceptable).
-- Test your own values to check all the rules. Check if a philosopher dies at the right time, if they don't steal forks, etc.
+    - Do not test with more than 200 philosphers
+    - Do not test with time_to_die or time_to_eat or time_to_sleep under 60 ms
+    - Test with 5 800 200 200, no one should die!
+    - Test with 5 800 200 200 7, no one should die and the simulation should stop when all the philosopher has eaten at least 7 times each.
+    - Test with 4 410 200 200, no one should die!
+    - Test with 4 310 200 100, a philosopher should die!
+    - Test with 2 philosophers and check the different times (a death delayed by more than 10 ms is unacceptable).
+    - Test your own values to check all the rules. Check if a philosopher dies at the right time, if they don't steal forks, etc.
+
+
 Philo_three code
-- Check the code of philo_three for the following things and ask for explanation.
-- Check if there will be one process per philosopher and that the first process waits for all of them.
-- Check if there is a single semaphore that represent the number of forks.
-- Check if the output is protected against multiple access. To avoid a scrambled view.
-- Check how the death of a philosopher is checked and if there is a semaphore to protect that a philosopher dies and start eating at the same time.
+    - Check the code of philo_three for the following things and ask for explanation.
+    - Check if there will be one process per philosopher and that the first process waits for all of them.
+    - Check if there is a single semaphore that represent the number of forks.
+    - Check if the output is protected against multiple access. To avoid a scrambled view.
+    - Check how the death of a philosopher is checked and if there is a semaphore to protect that a philosopher dies and start eating at the same time.
+
+
 Philo_three test
-- Do not test with more than 200 philosphers
-- Do not test with time_to_die or time_to_eat or time_to_sleep under 60 ms
-- Test with 5 800 200 200, no one should die!
-- Test with 5 800 200 200 7, no one should die and the simulation should stop when all the philosopher has eaten at least 7 times each.
-- Test with 4 410 200 200, no one should die!
-- Test with 4 310 200 100, a philosopher should die!
-- Test with 2 philosophers and check the different times (a death delayed by more than 10 ms is unacceptable).
-- Test your own values to check all the rules. Check if a philosopher dies at the right time, if they don't steal forks, etc.
+    - Do not test with more than 200 philosphers
+    - Do not test with time_to_die or time_to_eat or time_to_sleep under 60 ms
+    - Test with 5 800 200 200, no one should die!
+    - Test with 5 800 200 200 7, no one should die and the simulation should stop when all the philosopher has eaten at least 7 times each.
+    - Test with 4 410 200 200, no one should die!
+    - Test with 4 310 200 100, a philosopher should die!
+    - Test with 2 philosophers and check the different times (a death delayed by more than 10 ms is unacceptable).
+    - Test your own values to check all the rules. Check if a philosopher dies at the right time, if they don't steal forks, etc.
+
+
+
+    

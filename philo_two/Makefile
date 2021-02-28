@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -Werror -I./includes -pthread
-NAME = philo_one
+NAME = philo_two
 INC = -I./includes
 SRCS_DIR = ./srcs
 

@@ -1,17 +1,17 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   philo_one.h                                        :+:      :+:    :+:   */
+/*   philo_three.h                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: gihwan-kim <kgh06079@gmail.com>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/02/16 09:28:37 by gihwan-kim        #+#    #+#             */
-/*   Updated: 2021/02/28 12:48:28 by gihwan-kim       ###   ########.fr       */
+/*   Updated: 2021/02/28 11:06:36 by gihwan-kim       ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef PHILO_ONE_H
-#define PHILO_ONE_H
+#ifndef PHILO_TWO_H
+#define PHILO_TWO_H
 
 #include <unistd.h>
 #include <stdio.h>
@@ -19,7 +19,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
-
+#include <semaphore.h>
+#include <sys/types.h>
+#include <signal.h>
 
 /*
 ** time_to_* : milliseconds
@@ -40,8 +42,10 @@ typedef struct		s_option
 	int				is_died;
 	int				is_eat_over;
 	int				eat_num;
-	pthread_mutex_t	mutex_printf;
-	pthread_mutex_t	mutex_state;
+	sem_t			*sem_forks;
+	sem_t			*sem_printf;
+	sem_t			*sem_died;
+	sem_t			*sem_state;
 }					t_option;
 
 /*
@@ -53,9 +57,8 @@ typedef struct		s_philo
 {
 	int				no;
 	int				eat_count;
-	pthread_t		thread_idx;
-	pthread_mutex_t	*fork_left;
-	pthread_mutex_t	*fork_right;
+	pid_t			processor_idx;
+	sem_t			*sem_my_forks;
 	struct timeval	*s_start_time;
 	struct timeval	*s_last_eat_time;
 }					t_philo;
@@ -73,14 +76,14 @@ int					ft_isnum(const char *nptr);
 ** init.c
 */
 int					init_option(int argc, char **argv);
-int					init_mutex();
+int					init_sema();
 int					init_philo_array();
-int					init_mutex_clear();
+
 /*
 ** thread_funcs.c
 */
 void				*philo_all_state(void *_data);
 void				*philo_state(void *_data);
-void				*philo_action(void *_data);
-int					create_thread();
+int					philo_action(t_philo *_data);
+int					start_philosopher();
 #endif
